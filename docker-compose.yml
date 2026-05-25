@@ -1,0 +1,10 @@
+# Local orchestration for the Ansible Control Node
+services:
+  ansible-runner:
+    build:
+      context: ./control-node
+      dockerfile: Dockerfile
+    container_name: ansible-master
+    volumes:
+      - ./ansible:/workspace
+    working_dir: /workspace

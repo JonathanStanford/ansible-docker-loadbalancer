@@ -1,0 +1,53 @@
+# Provision Docker hosts and deploy the application
+- name: Configure Docker Hosts
+  hosts: app_servers
+  become: true
+  tasks:
+    - name: Install Docker engine and Python SDK
+      apt:
+        name: 
+          - docker.io
+          - python3-docker
+        state: present
+        update_cache: yes
+      # Using docker.io from Ubuntu repos to avoid external GPG keys. 
+      # apt-key is deprecated and poses a security risk in 22.04+
+
+    - name: Deploy web application container
+      docker_container:
+        name: webapp
+        image: "jdstanford/simple-webapp:v1"
+        state: started
+        restart_policy: always # Ensure it comes back up on server reboot
+        ports:
+          - "8080:8080"
+
+
+# Setup Nginx as a reverse proxy/load balancer
+- name: Configure Nginx Load Balancer
+  hosts: proxy_server
+  become: true
+  tasks:
+    - name: Install Nginx
+      apt:
+        name: nginx
+        state: present
+        update_cache: yes
+
+    - name: Deploy Nginx configuration
+      template:
+        src: nginx.conf.j2
+        dest: /etc/nginx/sites-available/default
+      notify: Restart Nginx # Triggers the handler below only if the config changed
+
+    - name: Ensure Nginx is enabled and running
+      service:
+        name: nginx
+        state: started
+        enabled: yes
+
+  handlers:
+    - name: Restart Nginx
+      service:
+        name: nginx
+        state: restarted
